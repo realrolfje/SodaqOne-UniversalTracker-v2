@@ -936,6 +936,43 @@ void setGpsActive(bool on)
             return;
         }
 
+        sodaq_wdt_safe_delay(15);
+
+        // Fetch the Navigation Engine Settings
+        NavigationEngineSettings navSettings;
+
+        retriesLeft = maxRetries;
+        while (!ublox.getNavEngineSettings(&navSettings) && (retriesLeft-- > 0)) {
+            debugPrintln("Retrying ublox.getNavEngineSettings...");
+            sodaq_wdt_safe_delay(15);
+        }
+        if (retriesLeft == -1) {
+            debugPrintln("ublox.getNavEngineSettings failed.");
+            return;
+        }
+
+        /*
+         * Update the Navigation Engine Settings according
+         * to the configuration. See CFG-NAV5" in u-blox protocol
+         * description on how to set the bitmask when adding
+         * configurable parameters.
+         */
+        navSettings.mask     = 0x0001;                  // Set flag for updating dynamic model.
+        navSettings.dynModel = params.getGpsDynModel(); // Choose dynamic model from configuration here
+
+        // Write the Navigation Engine Settings
+        retriesLeft = maxRetries;
+        while (!ublox.setNavEngineSettings(&navSettings) && (retriesLeft-- > 0)) {
+            debugPrintln("Retrying ublox.setNavEngineSettings...");
+            sodaq_wdt_safe_delay(15);
+        }
+        if (retriesLeft == -1) {
+            debugPrintln("ublox.setNavEngineSettings failed.");
+            return;
+        }
+
+        sodaq_wdt_safe_delay(15);
+
         ublox.CfgMsg(UBX_NAV_PVT, 1); // Navigation Position Velocity TimeSolution
         ublox.funcNavPvt = delegateNavPvt;
     }

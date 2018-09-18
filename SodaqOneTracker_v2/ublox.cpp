@@ -254,6 +254,40 @@ void UBlox::sendraw() {
     this->db_printf("UBlox::sendraw() == %4.4x\n",id);
 }
 
+/*
+ * Gets the navigational engine settings.
+ * See "CFG-NAV5" in u-blox protocol description.
+ */
+bool UBlox::getNavEngineSettings(NavigationEngineSettings* navDynModel) {
+    uint8_t buffer[4];
+    buffer[0] = 0x06; // Class
+    buffer[1] = 0x24; // Id
+    
+    buffer[2] = 0;    // Length LSB
+    buffer[3] = 0;    // Length MSB
+
+    (void) this->send(buffer,sizeof(buffer));
+    
+    // wait for response and copy answer into navDynModel
+    return this->wait(0x0624,sizeof(NavigationEngineSettings),navDynModel);
+}
+
+/*
+ * Sets the navigational engine settings.
+ * See "CFG-NAV5" in u-blox protocol description.
+ */
+bool UBlox::setNavEngineSettings(NavigationEngineSettings* navDynModel) {
+    // Warning: this overwrites the receive buffer.
+    payLoad_.buffer[0] = 0x06;                             // Class
+    payLoad_.buffer[1] = 0x24;                             // Id
+    payLoad_.buffer[2] = sizeof(NavigationEngineSettings); // Length LSB
+    payLoad_.buffer[3] = 0;                                // Length MSB
+    memcpy(&payLoad_.buffer[4],(uint8_t*)navDynModel,sizeof(NavigationEngineSettings));
+
+    (void) this->send(payLoad_.buffer,sizeof(NavigationEngineSettings)+4);
+    return this->wait();
+}
+
 void UBlox::CfgMsg(uint16_t Msg,uint8_t rate) {
     uint8_t buffer[7];
     //
